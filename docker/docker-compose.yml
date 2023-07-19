@@ -1,0 +1,56 @@
+version: '3.3'
+
+services:
+  nginx:
+    container_name: soros_nginx
+    image: nginx:1.23.2-alpine
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./init/config/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./init/certs:/etc/nginx/certs
+      - ./sesh:/var/cpanel/php/sessions/ea-php74:rw
+      - ./../codeigniter:/var/www/html:rw
+    depends_on:
+      - php
+    networks:
+      - soros_stack
+
+  php:
+    container_name: soros_php
+    build: init
+    restart: always
+    ports:
+      - 9000:9000
+    volumes:
+      - ./../codeigniter:/var/www/html:rw
+      - ./sesh:/var/cpanel/php/sessions/ea-php74:rw
+      - ./init/config/php/php.ini:/usr/local/etc/php/conf.d/php.ini
+      - ./init/config/php/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
+    depends_on:
+      - db
+    networks:
+      - soros_stack
+
+  db:
+    container_name: soros_mariadb
+    image: mariadb:latest
+    command: --max_allowed_packet=1073741824
+    restart: always
+    ports:
+      - '3306:3306'
+    environment:
+      DB_HOST: localhost
+      MARIADB_ROOT_PASSWORD: root
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./init/config/mariadb/my.cnf.d:/etc/mysql/my.cnf.d
+      - ./init/config/mariadb/schemas:/docker-entrypoint-initdb.d
+    networks:
+      - soros_stack
+networks:
+  soros_stack:
+volumes:
+  php:
+  db_data:
